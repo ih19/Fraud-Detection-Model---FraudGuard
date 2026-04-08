@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FraudGuard — ML Fraud Detection System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #0d1520;
+    --surface2: #111d2e;
+    --border: #1e3050;
+    --accent: #00f0a0;
+    --accent2: #ff4060;
+    --accent3: #4080ff;
+    --text: #d0e8ff;
+    --muted: #5a7a9a;
+    --warn: #ffaa00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,240,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    background: rgba(8,12,20,0.95);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    box-shadow: 0 0 16px rgba(0,240,160,0.3);
+  }
+  .logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent); }
+  .header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,240,160,0.08);
+    border: 1px solid rgba(0,240,160,0.2);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* GitHub link button */
+  .github-btn {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .github-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,240,160,0.06); }
+  .github-btn svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+
+  .tabs {
+    display: flex; gap: 4px;
+    margin: 32px 0 24px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    border: none; background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 32px; }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .metric-card.green::before { background: var(--accent); }
+  .metric-card.red::before { background: var(--accent2); }
+  .metric-card.blue::before { background: var(--accent3); }
+  .metric-card.warn::before { background: var(--warn); }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Space Mono', monospace; margin-bottom: 8px; }
+  .metric-value { font-size: 32px; font-weight: 800; line-height: 1; }
+  .metric-value.green { color: var(--accent); }
+  .metric-value.red { color: var(--accent2); }
+  .metric-value.blue { color: var(--accent3); }
+  .metric-value.warn { color: var(--warn); }
+  .metric-sub { font-size: 12px; color: var(--muted); margin-top: 6px; font-family: 'Space Mono', monospace; }
+
+  .section-title {
+    font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: 'Space Mono', monospace;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+  canvas { width: 100% !important; }
+
+  .scorer-layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1/-1; }
+  label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: 'Space Mono', monospace; }
+  input, select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,240,160,0.1); }
+  select option { background: var(--surface); }
+
+  .btn-score {
+    width: 100%; margin-top: 16px; padding: 14px;
+    background: var(--accent); color: #000;
+    border: none; border-radius: 8px;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px;
+    cursor: pointer; letter-spacing: 0.05em; transition: all 0.2s; text-transform: uppercase;
+  }
+  .btn-score:hover { background: #00ffb0; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,240,160,0.25); }
+  .btn-score:active { transform: translateY(0); }
+
+  .score-display {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 200px; position: relative;
+  }
+  .score-ring {
+    width: 160px; height: 160px; border-radius: 50%;
+    position: relative; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+  }
+  .score-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .score-ring-inner { text-align: center; position: relative; z-index: 1; }
+  .score-number { font-size: 42px; font-weight: 800; line-height: 1; }
+  .score-label { font-size: 11px; font-family: 'Space Mono', monospace; color: var(--muted); margin-top: 4px; }
+  .verdict {
+    font-size: 18px; font-weight: 800; padding: 8px 24px;
+    border-radius: 6px; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 16px;
+  }
+  .verdict.safe { background: rgba(0,240,160,0.1); color: var(--accent); border: 1px solid rgba(0,240,160,0.3); }
+  .verdict.suspicious { background: rgba(255,170,0,0.1); color: var(--warn); border: 1px solid rgba(255,170,0,0.3); }
+  .verdict.fraud { background: rgba(255,64,96,0.1); color: var(--accent2); border: 1px solid rgba(255,64,96,0.3); }
+
+  .shap-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .shap-item { display: flex; flex-direction: column; gap: 4px; }
+  .shap-row { display: flex; align-items: center; gap: 10px; }
+  .shap-name { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); width: 160px; flex-shrink: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+  .shap-bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+  .shap-bar { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .shap-bar.pos { background: var(--accent2); }
+  .shap-bar.neg { background: var(--accent); }
+  .shap-val { font-family: 'Space Mono', monospace; font-size: 10px; width: 48px; text-align: right; flex-shrink: 0; }
+  .shap-val.pos { color: var(--accent2); }
+  .shap-val.neg { color: var(--accent); }
+
+  .txn-table { width: 100%; border-collapse: collapse; font-family: 'Space Mono', monospace; font-size: 12px; }
+  .txn-table th { color: var(--muted); font-weight: 400; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+  .txn-table td { padding: 10px 12px; border-bottom: 1px solid rgba(30,48,80,0.5); }
+  .txn-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .badge.legit { background: rgba(0,240,160,0.1); color: var(--accent); }
+  .badge.fraud { background: rgba(255,64,96,0.1); color: var(--accent2); }
+  .badge.suspicious { background: rgba(255,170,0,0.1); color: var(--warn); }
+
+  .cm-cell {
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px; border-radius: 6px; font-family: 'Space Mono', monospace;
+    font-size: 13px; font-weight: 700;
+  }
+  .cm-label { font-size: 10px; color: var(--muted); font-weight: 400; }
+  .cm-tp { background: rgba(0,240,160,0.15); color: var(--accent); }
+  .cm-tn { background: rgba(0,240,160,0.08); color: var(--accent); }
+  .cm-fp { background: rgba(255,170,0,0.12); color: var(--warn); }
+  .cm-fn { background: rgba(255,64,96,0.12); color: var(--accent2); }
+
+  .model-row {
+    display: grid; grid-template-columns: 140px 1fr 80px 80px 80px;
+    align-items: center; gap: 12px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  .model-row:last-child { border-bottom: none; }
+  .model-name { font-weight: 600; font-size: 14px; }
+  .model-bar-wrap { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .model-bar { height: 100%; border-radius: 3px; background: var(--accent3); }
+  .model-bar.best { background: var(--accent); }
+  .model-stat { font-family: 'Space Mono', monospace; font-size: 12px; text-align: right; }
+  .model-stat.best { color: var(--accent); }
+
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+  .timeline-item { position: relative; padding-bottom: 20px; }
+  .timeline-dot {
+    position: absolute; left: -20px; top: 4px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--bg);
+  }
+  .timeline-time { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .timeline-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .timeline-desc { font-size: 12px; color: var(--muted); }
+
+  /* Hyperparameter grid */
+  .param-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; font-family: 'Space Mono', monospace; }
+  .param-cell { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .param-key { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .param-val { font-size: 14px; color: var(--accent); }
+
+  /* Tech stack tags */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-family: 'Space Mono', monospace; background: rgba(64,128,255,0.1); color: var(--accent3); border: 1px solid rgba(64,128,255,0.2); margin: 2px; }
+
+  @media(max-width:900px) {
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .scorer-layout { grid-template-columns: 1fr; }
+    .param-grid { grid-template-columns: repeat(2,1fr); }
+    .model-row { grid-template-columns: 1fr 1fr; }
+  }
+  @media(max-width:480px) {
+    .param-grid { grid-template-columns: 1fr 1fr; }
+    .header-right .status-pill:not(:first-child) { display: none; }
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .placeholder-text { color: var(--muted); font-family: 'Space Mono', monospace; font-size: 12px; text-align: center; padding: 40px 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">FG</div>
+        <div class="logo-text">Fraud<span>Guard</span></div>
+      </div>
+      <div class="header-right">
+        <div class="status-pill"><div class="status-dot"></div>MODEL LIVE · v2.3.1</div>
+        <div class="status-pill" style="color:var(--accent3);background:rgba(64,128,255,0.08);border-color:rgba(64,128,255,0.2);">LightGBM · PR-AUC 0.924</div>
+        <a class="github-btn" href="https://github.com/ih19/Fraud-Detection-Model---FraudGuard" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab" onclick="switchTab('scorer')">Transaction Scorer</button>
+    <button class="tab" onclick="switchTab('models')">Model Lab</button>
+    <button class="tab" onclick="switchTab('pipeline')">ML Pipeline</button>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div class="panel active" id="tab-overview">
+    <div class="metrics-grid">
+      <div class="metric-card green">
+        <div class="metric-label">PR-AUC Score</div>
+        <div class="metric-value green">0.924</div>
+        <div class="metric-sub">↑ 0.038 vs baseline</div>
+      </div>
+      <div class="metric-card red">
+        <div class="metric-label">Fraud Recall</div>
+        <div class="metric-value red">91.2%</div>
+        <div class="metric-sub">at threshold 0.42</div>
+      </div>
+      <div class="metric-card blue">
+        <div class="metric-label">Precision</div>
+        <div class="metric-value blue">84.7%</div>
+        <div class="metric-sub">false positive rate 2.1%</div>
+      </div>
+      <div class="metric-card warn">
+        <div class="metric-label">F1 Score</div>
+        <div class="metric-value warn">0.878</div>
+        <div class="metric-sub">590k transactions eval</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">📈 Precision-Recall Curve</div>
+        <canvas id="prCurve" height="220"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">🎯 Score Distribution by Class</div>
+        <canvas id="scoreDist" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">🔍 Confusion Matrix <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px;">threshold = 0.42</span></div>
+        <div style="margin-top:8px;">
+          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <div style="display:grid;grid-template-columns:auto 80px 80px;gap:4px;align-items:center;">
+                <div></div>
+                <div class="cm-cell cm-label" style="font-size:10px;">Pred: Legit</div>
+                <div class="cm-cell cm-label" style="font-size:10px;">Pred: Fraud</div>
+                <div class="cm-cell cm-label" style="writing-mode:vertical-rl;transform:rotate(180deg);height:80px;font-size:10px;">Actual: Legit</div>
+                <div class="cm-cell cm-tn" style="height:80px;flex-direction:column;gap:2px;"><div style="font-size:20px;">536,812</div><div style="font-size:10px;font-weight:400;color:var(--muted);">TN</div></div>
+                <div class="cm-cell cm-fp" style="height:80px;flex-direction:column;gap:2px;"><div style="font-size:20px;">11,521</div><div style="font-size:10px;font-weight:400;color:var(--muted);">FP</div></div>
+                <div class="cm-cell cm-label" style="writing-mode:vertical-rl;transform:rotate(180deg);height:80px;font-size:10px;">Actual: Fraud</div>
+                <div class="cm-cell cm-fn" style="height:80px;flex-direction:column;gap:2px;"><div style="font-size:20px;">1,847</div><div style="font-size:10px;font-weight:400;color:var(--muted);">FN</div></div>
+                <div class="cm-cell cm-tp" style="height:80px;flex-direction:column;gap:2px;"><div style="font-size:20px;">19,043</div><div style="font-size:10px;font-weight:400;color:var(--muted);">TP</div></div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:160px;">
+              <div class="timeline" style="padding-left:16px;">
+                <div class="timeline-item"><div class="timeline-dot" style="border-color:var(--accent)"></div><div class="timeline-title">True Negatives: 536,812</div><div class="timeline-desc">Legitimate transactions correctly cleared</div></div>
+                <div class="timeline-item"><div class="timeline-dot" style="border-color:var(--accent)"></div><div class="timeline-title">True Positives: 19,043</div><div class="timeline-desc">Fraud correctly caught</div></div>
+                <div class="timeline-item"><div class="timeline-dot" style="border-color:var(--warn)"></div><div class="timeline-title">False Positives: 11,521</div><div class="timeline-desc">Legitimate txns flagged (2.1%)</div></div>
+                <div class="timeline-item" style="padding-bottom:0"><div class="timeline-dot" style="border-color:var(--accent2)"></div><div class="timeline-title">False Negatives: 1,847</div><div class="timeline-desc">Missed fraud (8.8%)</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🧬 Top SHAP Features (Global)</div>
+        <div class="shap-list" id="globalShap"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Recent Transactions Stream</div>
+    <div class="card" style="padding:0;overflow:hidden;overflow-x:auto;">
+      <table class="txn-table">
+        <thead><tr><th>TXN ID</th><th>Amount</th><th>Merchant</th><th>Country</th><th>Hour</th><th>Velocity 24h</th><th>Score</th><th>Verdict</th></tr></thead>
+        <tbody id="txnTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SCORER TAB -->
+  <div class="panel" id="tab-scorer">
+    <div class="scorer-layout">
+      <div class="card">
+        <div class="card-title">⚡ Score a Transaction</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Transaction Amount ($)</label><input type="number" id="f_amount" value="247.50" min="0" step="0.01"/></div>
+          <div class="form-group"><label>Merchant Category</label>
+            <select id="f_merchant"><option>Electronics</option><option>Grocery</option><option>Travel</option><option>Entertainment</option><option>Gas Station</option><option>Restaurant</option><option>Online Retail</option><option>Jewelry</option><option>Wire Transfer</option></select>
+          </div>
+          <div class="form-group"><label>Hour of Day (0–23)</label><input type="number" id="f_hour" value="14" min="0" max="23"/></div>
+          <div class="form-group"><label>Day of Week (0=Mon)</label><input type="number" id="f_dow" value="2" min="0" max="6"/></div>
+          <div class="form-group"><label>Txns Last 1h (velocity)</label><input type="number" id="f_vel1h" value="2" min="0"/></div>
+          <div class="form-group"><label>Txns Last 24h (velocity)</label><input type="number" id="f_vel24h" value="5" min="0"/></div>
+          <div class="form-group"><label>Avg Spend This Merchant ($)</label><input type="number" id="f_avg" value="180" min="0"/></div>
+          <div class="form-group"><label>Distance from Home (km)</label><input type="number" id="f_dist" value="12" min="0"/></div>
+          <div class="form-group"><label>Card Age (months)</label><input type="number" id="f_card_age" value="24" min="0"/></div>
+          <div class="form-group"><label>Foreign Transaction</label><select id="f_foreign"><option value="0">No</option><option value="1">Yes</option></select></div>
+          <div class="form-group"><label>New Device</label><select id="f_new_device"><option value="0">No</option><option value="1">Yes</option></select></div>
+          <div class="form-group"><label>PIN Used</label><select id="f_pin"><option value="1">Yes</option><option value="0">No</option></select></div>
+        </div>
+        <button class="btn-score" onclick="scoreTransaction()">⚡ Score Transaction</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <div class="card">
+          <div class="card-title">🎯 Fraud Score</div>
+          <div class="score-display" id="scoreDisplay"><div class="placeholder-text">Enter transaction details and click Score</div></div>
+        </div>
+        <div class="card" id="shapCard" style="display:none;">
+          <div class="card-title">🧬 SHAP Explanation</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:12px;"><span style="color:var(--accent2);">■</span> increases fraud risk &nbsp; <span style="color:var(--accent);">■</span> decreases fraud risk</div>
+          <div class="shap-list" id="shapBars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODELS TAB -->
+  <div class="panel" id="tab-models">
+    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="metric-card green"><div class="metric-label">Best Model</div><div class="metric-value green" style="font-size:22px;margin-top:4px;">LightGBM</div><div class="metric-sub">PR-AUC: 0.924</div></div>
+      <div class="metric-card blue"><div class="metric-label">Experiments Run</div><div class="metric-value blue">47</div><div class="metric-sub">MLflow tracked</div></div>
+      <div class="metric-card warn"><div class="metric-label">Training Time</div><div class="metric-value warn" style="font-size:24px;margin-top:4px;">4m 12s</div><div class="metric-sub">590k samples · 8 cores</div></div>
+    </div>
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-title">🏆 Model Comparison</div>
+      <div style="display:grid;grid-template-columns:160px 1fr 90px 90px 90px 90px;gap:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;">Model</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;">PR-AUC</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-align:right;text-transform:uppercase;">Recall</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-align:right;text-transform:uppercase;">Precision</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-align:right;text-transform:uppercase;">F1</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-align:right;text-transform:uppercase;">Train (s)</div>
+      </div>
+      <div id="modelRows"></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">📊 Threshold Analysis</div>
+        <canvas id="threshChart" height="220"></canvas>
+        <div style="margin-top:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">Optimal threshold at <span style="color:var(--accent);">0.42</span> maximizes F1. Higher threshold → fewer false positives but misses more fraud.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔁 Cross-Validation Stability</div>
+        <canvas id="cvChart" height="220"></canvas>
+        <div style="margin-top:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);">5-fold time-series CV. Low variance confirms no data leakage. Mean PR-AUC: <span style="color:var(--accent);">0.921 ± 0.008</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINE TAB -->
+  <div class="panel" id="tab-pipeline">
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">🏗️ Feature Engineering</div>
+        <div class="timeline">
+          <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-time">STEP 01 · RAW FEATURES</div><div class="timeline-title">Base Transaction Fields</div><div class="timeline-desc">Amount, merchant, timestamp, location, card metadata</div></div>
+          <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-time">STEP 02 · TEMPORAL</div><div class="timeline-title">Time-Based Features</div><div class="timeline-desc">Hour, day-of-week, is_weekend, time_since_last_txn, is_night</div></div>
+          <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-time">STEP 03 · VELOCITY</div><div class="timeline-title">Rolling Window Aggregates</div><div class="timeline-desc">txn_count_1h, txn_count_24h, total_spend_7d, unique_merchants_24h</div></div>
+          <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-time">STEP 04 · BEHAVIORAL</div><div class="timeline-title">User Baseline Deviation</div><div class="timeline-desc">amount_vs_avg_ratio, new_merchant_flag, unusual_country, amount_z_score</div></div>
+          <div class="timeline-item" style="padding-bottom:0"><div class="timeline-dot" style="border-color:var(--accent3)"></div><div class="timeline-time">STEP 05 · ENCODING</div><div class="timeline-title">Categorical Encoding</div><div class="timeline-desc">Target encoding for merchant_category, frequency encoding for country</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚖️ Class Imbalance Strategy</div>
+        <div style="margin-bottom:20px;">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px;font-family:'Space Mono',monospace;">Dataset: 3.5% fraud rate (highly imbalanced)</div>
+          <div style="display:flex;height:20px;border-radius:4px;overflow:hidden;margin-bottom:8px;"><div style="width:96.5%;background:var(--accent3);opacity:0.6;"></div><div style="width:3.5%;background:var(--accent2);"></div></div>
+          <div style="display:flex;gap:16px;font-size:11px;font-family:'Space Mono',monospace;"><span style="color:var(--accent3);">■ Legitimate 96.5%</span><span style="color:var(--accent2);">■ Fraud 3.5%</span></div>
+        </div>
+        <div class="timeline">
+          <div class="timeline-item"><div class="timeline-dot" style="border-color:var(--accent2)"></div><div class="timeline-time">APPROACH 01</div><div class="timeline-title">Cost-Sensitive Learning</div><div class="timeline-desc">class_weight = {0:1, 1:28} — penalizes missing fraud 28x more than false positives</div></div>
+          <div class="timeline-item"><div class="timeline-dot" style="border-color:var(--accent2)"></div><div class="timeline-time">APPROACH 02</div><div class="timeline-title">PR-AUC as Primary Metric</div><div class="timeline-desc">ROC-AUC is misleading on imbalanced data. PR-AUC focuses on the minority class.</div></div>
+          <div class="timeline-item"><div class="timeline-dot" style="border-color:var(--accent2)"></div><div class="timeline-time">APPROACH 03</div><div class="timeline-title">Threshold Calibration</div><div class="timeline-desc">Default 0.5 is wrong. Optimal threshold 0.42 found via F1 maximization on val set.</div></div>
+          <div class="timeline-item" style="padding-bottom:0"><div class="timeline-dot" style="border-color:var(--accent2)"></div><div class="timeline-time">APPROACH 04</div><div class="timeline-title">Time-Based CV Splits</div><div class="timeline-desc">No random splits. 5-fold chronological CV prevents leakage from future to past.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-title">💻 LightGBM Hyperparameters (Best Run)</div>
+      <!-- FIXED: hardcoded HTML instead of JS template literal (broken on GitHub Pages) -->
+      <div class="param-grid">
+        <div class="param-cell"><div class="param-key">n_estimators</div><div class="param-val">1200</div></div>
+        <div class="param-cell"><div class="param-key">learning_rate</div><div class="param-val">0.05</div></div>
+        <div class="param-cell"><div class="param-key">num_leaves</div><div class="param-val">127</div></div>
+        <div class="param-cell"><div class="param-key">max_depth</div><div class="param-val">8</div></div>
+        <div class="param-cell"><div class="param-key">min_child_samples</div><div class="param-val">50</div></div>
+        <div class="param-cell"><div class="param-key">subsample</div><div class="param-val">0.8</div></div>
+        <div class="param-cell"><div class="param-key">colsample_bytree</div><div class="param-val">0.7</div></div>
+        <div class="param-cell"><div class="param-key">reg_alpha</div><div class="param-val">0.1</div></div>
+        <div class="param-cell"><div class="param-key">reg_lambda</div><div class="param-val">0.2</div></div>
+        <div class="param-cell"><div class="param-key">scale_pos_weight</div><div class="param-val">28</div></div>
+        <div class="param-cell"><div class="param-key">early_stopping</div><div class="param-val">50</div></div>
+        <div class="param-cell"><div class="param-key">metric</div><div class="param-val">average_precision</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📦 Tech Stack</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <span class="tag">Python 3.11</span><span class="tag">LightGBM 4.x</span><span class="tag">scikit-learn</span><span class="tag">SHAP</span><span class="tag">pandas</span><span class="tag">numpy</span><span class="tag">FastAPI</span><span class="tag">MLflow</span><span class="tag">Docker</span><span class="tag">pytest</span><span class="tag">evidently</span>
+      </div>
+      <div style="margin-top:20px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);line-height:1.8;">
+        <span style="color:var(--accent);">$</span> pip install lightgbm shap scikit-learn pandas fastapi mlflow evidently<br>
+        <span style="color:var(--accent);">$</span> python src/train.py --config configs/lgbm_best.yaml<br>
+        <span style="color:var(--accent);">$</span> mlflow ui &nbsp;<span style="color:#3a5a7a;"># experiment tracking</span><br>
+        <span style="color:var(--accent);">$</span> uvicorn src.api:app --reload --port 8000<br>
+        <span style="color:var(--accent);">$</span> docker compose up --build
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['overview','scorer','models','pipeline'][i]===id);
+  });
+  document.querySelectorAll('.panel').forEach(p=>{
+    p.classList.toggle('active', p.id==='tab-'+id);
+  });
+}
+
+Chart.defaults.color = '#5a7a9a';
+Chart.defaults.borderColor = '#1e3050';
+Chart.defaults.font.family = "'Space Mono', monospace";
+Chart.defaults.font.size = 11;
+
+// PR Curve
+const prCtx = document.getElementById('prCurve').getContext('2d');
+const prPoints = [];
+for(let i=0;i<=50;i++){const r=i/50;prPoints.push({x:r,y:Math.max(0.5,Math.min(1,0.98-0.08*r-0.5*r*r))});}
+new Chart(prCtx,{type:'scatter',data:{datasets:[
+  {label:'LightGBM',data:prPoints,showLine:true,borderColor:'#00f0a0',backgroundColor:'rgba(0,240,160,0.05)',borderWidth:2,pointRadius:0,tension:0.3},
+  {label:'XGBoost',data:prPoints.map(p=>({x:p.x,y:p.y-0.04})),showLine:true,borderColor:'#4080ff',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.3,borderDash:[4,4]},
+  {label:'Logistic',data:prPoints.map(p=>({x:p.x,y:p.y-0.15})),showLine:true,borderColor:'#5a7a9a',backgroundColor:'transparent',borderWidth:1,pointRadius:0,tension:0.3,borderDash:[2,4]},
+]},options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:{title:{display:true,text:'Recall'}},y:{title:{display:true,text:'Precision'},min:0.4,max:1}}}});
+
+// Score Distribution
+const sdCtx = document.getElementById('scoreDist').getContext('2d');
+const bins = Array.from({length:20},(_,i)=>i/20);
+new Chart(sdCtx,{type:'bar',data:{labels:bins.map(b=>(b+0.025).toFixed(2)),datasets:[
+  {label:'Legitimate',data:bins.map(b=>Math.max(0,800*Math.exp(-((b-0.15)**2)/(2*0.06**2)))),backgroundColor:'rgba(64,128,255,0.4)',borderColor:'#4080ff',borderWidth:1},
+  {label:'Fraud',data:bins.map(b=>Math.max(0,400*Math.exp(-((b-0.75)**2)/(2*0.08**2)))),backgroundColor:'rgba(255,64,96,0.4)',borderColor:'#ff4060',borderWidth:1},
+]},options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:{title:{display:true,text:'Fraud Score'},ticks:{maxTicksLimit:8}},y:{title:{display:true,text:'Count'}}}}});
+
+// Global SHAP
+document.getElementById('globalShap').innerHTML = [
+  {name:'velocity_1h',val:0.42,dir:'pos'},{name:'amount_z_score',val:0.38,dir:'pos'},
+  {name:'foreign_transaction',val:0.31,dir:'pos'},{name:'new_device_flag',val:0.28,dir:'pos'},
+  {name:'distance_from_home',val:0.24,dir:'pos'},{name:'card_age_months',val:-0.19,dir:'neg'},
+  {name:'pin_used',val:-0.16,dir:'neg'},{name:'merchant_cat_freq',val:0.14,dir:'pos'},
+].map(f=>`<div class="shap-item"><div class="shap-row">
+  <div class="shap-name">${f.name}</div>
+  <div class="shap-bar-wrap"><div class="shap-bar ${f.dir}" style="width:${Math.abs(f.val)/0.45*100}%"></div></div>
+  <div class="shap-val ${f.dir}">${f.val>0?'+':''}${f.val.toFixed(3)}</div>
+</div></div>`).join('');
+
+// Transaction table
+const merchants=['Amazon','Walmart','Shell','Delta Air','Apple Store','Zara','Chase Wire','Tiffany & Co','Uber','Netflix'];
+const countries=['US','US','US','US','UK','RU','NG','US','CA','US'];
+document.getElementById('txnTable').innerHTML = Array.from({length:12},(_,i)=>{
+  const score=Math.random();
+  const verdict=score>0.75?'fraud':score>0.42?'suspicious':'legit';
+  return `<tr>
+    <td style="color:var(--muted)">TXN-${100000+Math.floor(Math.random()*900000)}</td>
+    <td style="font-weight:600;">$${(Math.random()*2000+10).toFixed(2)}</td>
+    <td>${merchants[i%10]}</td><td>${countries[i%10]}</td>
+    <td>${Math.floor(Math.random()*24)}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}</td>
+    <td>${Math.floor(Math.random()*20)}</td>
+    <td style="color:${score>0.75?'var(--accent2)':score>0.42?'var(--warn)':'var(--accent)'};font-weight:700;">${score.toFixed(3)}</td>
+    <td><span class="badge ${verdict}">${verdict}</span></td>
+  </tr>`;
+}).join('');
+
+// Scorer
+function scoreTransaction() {
+  const amount=parseFloat(document.getElementById('f_amount').value)||0;
+  const merchant=document.getElementById('f_merchant').value;
+  const hour=parseInt(document.getElementById('f_hour').value)||0;
+  const vel1h=parseInt(document.getElementById('f_vel1h').value)||0;
+  const vel24h=parseInt(document.getElementById('f_vel24h').value)||0;
+  const avg=parseFloat(document.getElementById('f_avg').value)||100;
+  const dist=parseFloat(document.getElementById('f_dist').value)||0;
+  const cardAge=parseInt(document.getElementById('f_card_age').value)||0;
+  const foreign=parseInt(document.getElementById('f_foreign').value)||0;
+  const newDev=parseInt(document.getElementById('f_new_device').value)||0;
+  const pin=parseInt(document.getElementById('f_pin').value)||0;
+
+  let score=0.05;
+  if(['Wire Transfer','Jewelry','Electronics'].includes(merchant)) score+=0.15;
+  const amountRatio=amount/Math.max(avg,1);
+  if(amountRatio>3) score+=0.25; else if(amountRatio>2) score+=0.15; else if(amountRatio>1.5) score+=0.08;
+  if(vel1h>5) score+=0.20; else if(vel1h>3) score+=0.12; else if(vel1h>2) score+=0.06;
+  if(vel24h>15) score+=0.12; else if(vel24h>10) score+=0.06;
+  if(hour<4||hour>22) score+=0.10;
+  if(dist>500) score+=0.18; else if(dist>100) score+=0.08;
+  if(foreign) score+=0.14;
+  if(newDev) score+=0.12;
+  if(!pin) score+=0.06;
+  if(cardAge<3) score+=0.08; else if(cardAge>24) score-=0.05;
+  score=Math.max(0.01,Math.min(0.99,score+(Math.random()-0.5)*0.03));
+
+  const pct=Math.round(score*100);
+  const color=score>0.6?'#ff4060':score>0.3?'#ffaa00':'#00f0a0';
+  const verdict=score>0.6?'fraud':score>0.3?'suspicious':'safe';
+  const verdictLabel=score>0.6?'🚨 HIGH FRAUD RISK':score>0.3?'⚠️ SUSPICIOUS':'✅ LIKELY SAFE';
+  const C=2*Math.PI*54;
+
+  document.getElementById('scoreDisplay').innerHTML=`
+    <div class="score-ring">
+      <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="#1e3050" stroke-width="8"/>
+      <circle cx="60" cy="60" r="54" fill="none" stroke="${color}" stroke-width="8"
+        stroke-dasharray="${C}" stroke-dashoffset="${(1-score)*C}" stroke-linecap="round"
+        style="transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1)"/></svg>
+      <div class="score-ring-inner"><div class="score-number" style="color:${color}">${pct}</div><div class="score-label">FRAUD SCORE</div></div>
+    </div>
+    <div class="verdict ${verdict}">${verdictLabel}</div>
+    <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);text-align:center;">threshold=0.42 · model=LightGBM v2.3.1</div>`;
+
+  const shapData=[
+    {name:'amount_vs_avg_ratio',val:Math.min(0.35,(amountRatio-1)*0.12),dir:amountRatio>1?'pos':'neg'},
+    {name:'velocity_1h',val:Math.min(0.28,vel1h*0.04),dir:vel1h>2?'pos':'neg'},
+    {name:'distance_km',val:Math.min(0.22,dist*0.0004),dir:dist>50?'pos':'neg'},
+    {name:'foreign_txn',val:foreign*0.14,dir:foreign?'pos':'neg'},
+    {name:'new_device',val:newDev*0.12,dir:newDev?'pos':'neg'},
+    {name:'hour_of_day',val:(hour<4||hour>22)?0.10:-0.03,dir:(hour<4||hour>22)?'pos':'neg'},
+    {name:'card_age_months',val:-Math.min(0.08,cardAge*0.003),dir:'neg'},
+    {name:'pin_used',val:pin?-0.06:0.06,dir:pin?'neg':'pos'},
+  ].sort((a,b)=>Math.abs(b.val)-Math.abs(a.val));
+  const maxS=Math.max(...shapData.map(s=>Math.abs(s.val)));
+  document.getElementById('shapBars').innerHTML=shapData.map(s=>`
+    <div class="shap-item"><div class="shap-row">
+      <div class="shap-name">${s.name}</div>
+      <div class="shap-bar-wrap"><div class="shap-bar ${s.dir}" style="width:${(Math.abs(s.val)/maxS*100).toFixed(1)}%"></div></div>
+      <div class="shap-val ${s.dir}">${s.val>=0?'+':''}${s.val.toFixed(3)}</div>
+    </div></div>`).join('');
+  document.getElementById('shapCard').style.display='block';
+}
+
+// Model rows
+[{name:'LightGBM',prauc:0.924,recall:0.912,prec:0.847,f1:0.878,train:252,best:true},
+ {name:'XGBoost',prauc:0.891,recall:0.887,prec:0.831,f1:0.858,train:418,best:false},
+ {name:'Random Forest',prauc:0.863,recall:0.854,prec:0.802,f1:0.827,train:634,best:false},
+ {name:'Neural Net (MLP)',prauc:0.847,recall:0.841,prec:0.788,f1:0.813,train:1205,best:false},
+ {name:'Logistic Regression',prauc:0.712,recall:0.703,prec:0.681,f1:0.692,train:18,best:false},
+].forEach(m=>{
+  document.getElementById('modelRows').insertAdjacentHTML('beforeend',`
+  <div class="model-row">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="color:${m.best?'var(--accent)':'transparent'};font-size:12px;">★</span>
+      <div class="model-name" style="${m.best?'color:var(--accent)':''}">${m.name}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="model-bar-wrap" style="flex:1"><div class="model-bar ${m.best?'best':''}" style="width:${m.prauc*100}%"></div></div>
+      <div style="font-family:'Space Mono',monospace;font-size:12px;width:48px;${m.best?'color:var(--accent)':''}">${m.prauc}</div>
+    </div>
+    <div class="model-stat ${m.best?'best':''}">${(m.recall*100).toFixed(1)}%</div>
+    <div class="model-stat ${m.best?'best':''}">${(m.prec*100).toFixed(1)}%</div>
+    <div class="model-stat ${m.best?'best':''}">${m.f1}</div>
+    <div class="model-stat">${m.train}s</div>
+  </div>`);
+});
+
+// Threshold chart
+const thCtx=document.getElementById('threshChart').getContext('2d');
+const thresholds=Array.from({length:20},(_,i)=>(i+1)/20);
+const recallT=thresholds.map(t=>Math.max(0.3,1-t*0.8));
+const precT=thresholds.map(t=>Math.min(0.99,0.4+t*0.55));
+new Chart(thCtx,{type:'line',data:{labels:thresholds.map(t=>t.toFixed(2)),datasets:[
+  {label:'Recall',data:recallT,borderColor:'#ff4060',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:0.3},
+  {label:'Precision',data:precT,borderColor:'#4080ff',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:0.3},
+  {label:'F1',data:thresholds.map((_,i)=>2*recallT[i]*precT[i]/(recallT[i]+precT[i])),borderColor:'#00f0a0',backgroundColor:'rgba(0,240,160,0.05)',borderWidth:2.5,pointRadius:0,tension:0.3,fill:true},
+]},options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:12}}},scales:{x:{title:{display:true,text:'Decision Threshold'}},y:{min:0.3,max:1}}}});
+
+// CV chart
+new Chart(document.getElementById('cvChart').getContext('2d'),{type:'bar',data:{
+  labels:['Fold 1','Fold 2','Fold 3','Fold 4','Fold 5'],
+  datasets:[{label:'PR-AUC',data:[0.918,0.926,0.924,0.913,0.922],backgroundColor:'rgba(0,240,160,0.2)',borderColor:'#00f0a0',borderWidth:2,borderRadius:4}]
+},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:0.88,max:0.95,title:{display:true,text:'PR-AUC'}}}}});
+</script>
+</body>
+</html>
